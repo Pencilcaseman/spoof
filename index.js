@@ -32,7 +32,7 @@ const CISCO_MAC_ADDRESS_RE = /([0-9A-F]{0,4})\.([0-9A-F]{0,4})\.([0-9A-F]{0,4})/
  * @param {Array.<string>|null} targets
  * @return {Array.<Object>)}
  */
-function findInterfaces (targets) {
+function findInterfaces(targets) {
   if (!targets) targets = []
 
   targets = targets.map(target => target.toLowerCase())
@@ -46,7 +46,7 @@ function findInterfaces (targets) {
   }
 }
 
-function findInterfacesDarwin (targets) {
+function findInterfacesDarwin(targets) {
   // Parse the output of `networksetup -listallhardwareports` which gives
   // us 3 fields per port:
   // - the port name,
@@ -104,7 +104,7 @@ function findInterfacesDarwin (targets) {
   return interfaces
 }
 
-function findInterfacesLinux (targets) {
+function findInterfacesLinux(targets) {
   // Parse the output of `ifconfig` which gives us:
   // - the adapter description
   // - the adapter name/device associated with this, if any,
@@ -163,7 +163,7 @@ function findInterfacesLinux (targets) {
   return interfaces
 }
 
-function findInterfacesWin32 (targets) {
+function findInterfacesWin32(targets) {
   const output = cp.execSync('ipconfig /all', { stdio: 'pipe' }).toString()
 
   const interfaces = []
@@ -228,7 +228,7 @@ function findInterfacesWin32 (targets) {
  * @param  {string} target
  * @return {Object}
  */
-function findInterface (target) {
+function findInterface(target) {
   const interfaces = findInterfaces([target])
   return interfaces && interfaces[0]
 }
@@ -238,7 +238,7 @@ function findInterface (target) {
  * interface's hardware MAC address.
  * @return {string}
  */
-function getInterfaceMAC (device) {
+function getInterfaceMAC(device) {
   if (process.platform === 'darwin' || process.platform === 'linux') {
     let output
     try {
@@ -265,7 +265,7 @@ function getInterfaceMAC (device) {
  * @param {string} mac
  * @param {string=} port
  */
-function setInterfaceMAC (device, mac, port) {
+function setInterfaceMAC(device, mac, port) {
   if (!MAC_ADDRESS_RE.exec(mac)) {
     throw new Error(mac + ' is not a valid MAC address')
   }
@@ -274,19 +274,14 @@ function setInterfaceMAC (device, mac, port) {
 
   if (process.platform === 'darwin') {
     if (isWirelessPort) {
-      // Turn on the device, assuming it's an airport device.
+      // Turn off the device, assuming it's an airport device, to disassociate from any
+      // networks and then turn it back on so we can change the MAC.
       try {
+        cp.execSync(quote(['networksetup', '-setairportpower', device, 'off']))
         cp.execSync(quote(['networksetup', '-setairportpower', device, 'on']))
       } catch (err) {
-        throw new Error('Unable to power on wifi device')
+        throw new Error('Unable to power cycle wifi device')
       }
-    }
-
-    // For some reason this seems to be required even when changing a non-airport device.
-    try {
-      cp.execSync(quote([PATH_TO_AIRPORT, '-z']))
-    } catch (err) {
-      throw new Error('Unable to disassociate from wifi networks')
     }
 
     // Change the MAC.
@@ -302,7 +297,7 @@ function setInterfaceMAC (device, mac, port) {
         cp.execSync(quote(['networksetup', '-setairportpower', device, 'off']))
         cp.execSync(quote(['networksetup', '-setairportpower', device, 'on']))
       } catch (err) {
-        throw new Error('Unable to set restart wifi device')
+        throw new Error('Unable to restart wifi device')
       }
     }
   } else if (process.platform === 'linux') {
@@ -342,7 +337,7 @@ function setInterfaceMAC (device, mac, port) {
  * @param {string} device
  * @param {string} mac
  */
-function tryWindowsKey (key, device, mac) {
+function tryWindowsKey(key, device, mac) {
   // Skip the Properties key to avoid problems with permissions
   if (key.indexOf('Properties') > -1) {
     return false
@@ -387,7 +382,7 @@ function tryWindowsKey (key, device, mac) {
  * @param  {boolean} localAdmin  locally administered address
  * @return {string}
  */
-function randomize (localAdmin) {
+function randomize(localAdmin) {
   // Randomly assign a VM vendor's MAC address prefix, which should
   // decrease chance of colliding with existing device's addresses.
 
@@ -456,7 +451,7 @@ function randomize (localAdmin) {
  * @param  {string} mac
  * @return {string}
  */
-function normalize (mac) {
+function normalize(mac) {
   let m = CISCO_MAC_ADDRESS_RE.exec(mac)
   if (m) {
     const halfwords = m.slice(1)
@@ -476,7 +471,7 @@ function normalize (mac) {
   }
 }
 
-function chunk (str, n) {
+function chunk(str, n) {
   const arr = []
   for (let i = 0; i < str.length; i += n) {
     arr.push(str.slice(i, i + n))
@@ -490,6 +485,6 @@ function chunk (str, n) {
  * @param  {number} max
  * @return {number}
  */
-function random (min, max) {
+function random(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1))
 }
